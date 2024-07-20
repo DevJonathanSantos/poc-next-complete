@@ -5,15 +5,33 @@ export const authConfig = {
     signIn: "/login",
   },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = user.role; // Assuming the user object has a role property
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.role = `${token.role}`; // Include the role in the session object
+      }
+      return session;
+    },
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
-      if (isOnDashboard) {
-        if (isLoggedIn) return true;
-        return false; // Redirect unauthenticated users to login page
-      } else if (isLoggedIn) {
+      const userRole = auth?.user?.role;
+
+      if (!isLoggedIn) return false;
+
+      if (nextUrl.pathname.match("/dashboard/invoices")) {
+        if (userRole === "admin") return true;
+        else return false;
+      }
+
+      if (!nextUrl.pathname.match("/dashboard")) {
         return Response.redirect(new URL("/dashboard", nextUrl));
       }
+
       return true;
     },
   },
